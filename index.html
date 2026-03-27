@@ -13,8 +13,8 @@
             --yellow: #ffd600;
             --error: #ff5252;
             --panel: #252525;
-            --slot-w: 40px;
-            --slot-h: 55px;
+            --slot-w: 35px;
+            --slot-h: 50px;
         }
 
         body {
@@ -22,7 +22,7 @@
             color: #eee;
             font-family: 'Segoe UI', sans-serif;
             margin: 0;
-            height: 100vh;
+            height: 100dvh;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -31,7 +31,7 @@
 
         #app {
             width: 100%;
-            height: 100%;
+            height: 100dvh;
             max-width: 420px;
             background-color: var(--app-bg);
             display: flex;
@@ -54,12 +54,13 @@
         }
 
         #history-container {
-            flex: 1;
+            flex: 1 1 auto;
             overflow-y: auto;
-            padding: 15px;
+            padding: 10px 15px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
+            -webkit-overflow-scrolling: touch;
         }
 
         .row {
