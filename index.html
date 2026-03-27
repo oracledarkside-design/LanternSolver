@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lantern Solver Elite</title>
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --app-bg: #121212;
+            --card: #1e1e1e;
+            --accent: #00e676;
+            --yellow: #ffd600;
+            --error: #ff5252;
+            --panel: #252525;
+            --slot-w: 40px;
+            --slot-h: 55px;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: #eee;
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        #app {
+            width: 100%;
+            height: 100%;
+            max-width: 420px;
+            background-color: var(--app-bg);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        }
+
+        @media screen and (min-width: 421px) {
+            #app { height: 95vh; max-height: 900px; border-radius: 20px; overflow: hidden; }
+        }
+
+        header {
+            padding: 10px 15px;
+            background: var(--panel);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+
+        #history-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .row {
+            display: flex;
+            align-items: center;
+            background: var(--card);
+            padding: 8px 12px;
+            border-radius: 6px;
+            gap: 10px;
+        }
+
+        .slots { display: flex; gap: 6px; }
+        .slot {
+            width: var(--slot-w); height: var(--slot-h);
+            background: #000; border-radius: 4px;
+            display: flex; justify-content: center; align-items: center;
+            border: 1px solid #333; position: relative;
+        }
+
+        .score-badge { font-size: 14px; margin-left: auto; display: flex; gap: 10px; }
+
+        .controls {
+            background: var(--panel);
+            border-top: 2px solid #333;
+            position: relative;
+            padding: 10px;
+            padding-top: 15px;
+        }
+
+        .tabs-container {
+            position: absolute;
+            right: 15px;
+            top: -30px;
+            display: flex;
+            gap: 4px;
+        }
+
+        .top-tab {
+            background: #333;
+            padding: 5px 10px;
+            border-radius: 8px 8px 0 0;
+            font-size: 12px;
+            cursor: pointer;
+            color: #aaa;
+            border: 1px solid #444;
+            border-bottom: none;
+            transition: 0.2s;
+        }
+        .top-tab:hover { background: #444; }
+        .top-tab.active { background: var(--accent); color: #000; font-weight: bold; border-color: var(--accent); }
+        .tab-reset:hover { background: var(--error); color: white; border-color: var(--error); }
+
+        .status-panel {
+            min-height: 45px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .btn-grid { 
+            display: grid; 
+            grid-template-columns: repeat(5, 42px); 
+            gap: 8px; 
+            justify-content: center; 
+        }
+        
+        .btn-score {
+            width: 42px; height: 42px;
+            border-radius: 8px; border: 2px solid;
+            background: #111; color: white;
+            font-weight: bold; cursor: pointer;
+        }
+        .btn-g { border-color: var(--accent); }
+        .btn-y { border-color: var(--yellow); }
+        /* Обновленная палитра */
+        .picker { 
+            display: flex; 
+            justify-content: space-around; 
+            max-height: 0; 
+            opacity: 0; 
+            overflow: hidden; 
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); /* Плавная кривая */
+            margin: 0;
+            transform: translateY(-10px); /* Легкий вылет снизу */
+        }
+
+        .picker.show { 
+            max-height: 60px; 
+            opacity: 1; 
+            margin: 15px 0; 
+            transform: translateY(0);
+        }
+
+        /* Анимация для секции советов */
+        #hint-section-wrap { 
+            overflow: hidden;
+            max-height: 0px; /* Достаточно для контента */
+            transition: all 0.4s ease;
+            opacity: 1;
+        }
+
+        /* Плавная смена контента внутри советов */
+        .hint-container {
+            transition: opacity 0.3s ease;
+        }
+
+        /* Эффект нажатия на вкладки */
+        .top-tab {
+            transition: all 0.3s ease;
+        }      
+        .lantern { width: 30px; height: 42px; border-radius: 3px; cursor: pointer; transition: 0.2s; }
+        .color-0 { background: #4CAF50; } .color-1 { background: #00BCD4; }
+        .color-2 { background: #9C27B0; } .color-3 { background: #F44336; }
+        .color-4 { background: #0b5796; } .color-5 { background: #FF9800; }
+        .used { opacity: 0.1; pointer-events: none; }
+
+        #hint-section-wrap { transition: 0.3s; }
+        .hint-section { background: #1a1a1a; border-radius: 6px; padding: 12px; margin-top: 5px; }
+        
+        .hint-container { gap: 12px; }
+        .hint-container.mode-auto { display: grid; grid-template-columns: repeat(2, 1fr); justify-items: center; }
+        .hint-container.mode-manual { display: flex; flex-wrap: wrap; justify-content: center; }
+        
+        .hint-item { cursor: pointer; display: flex; gap: 4px; background: #333; padding: 8px; border-radius: 6px; }
+        .hint-item:hover { background: #444; transform: translateY(-2px); }
+        
+        /* УВЕЛИЧЕННЫЙ РАЗМЕР ПОДСКАЗОК */
+        .mini-l { width: 22px; height: 32px; border-radius: 3px; }
+
+        .win-text { color: var(--accent); font-weight: bold; letter-spacing: 2px; }
+        #app {
+            -webkit-user-select: none; /* Safari */
+            user-select: none;         /* Стандарт */
+        }
+
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <header>
+        <div id="pool-info">Осталось: <b>360</b></div>
+        <div style="font-size: 14px; opacity: 0.7;">Цветные фонарики</div>
+    </header>
+
+    <div id="history-container"></div>
+
+    <div class="controls">
+        <div class="tabs-container">
+            <div class="top-tab" id="auto-tab" onclick="toggleAuto()">Авто</div>
+            <div class="top-tab" id="manual-tab" onclick="toggleManual()">Ручной</div>
+            <div class="top-tab tab-reset" onclick="fullReset()">Сбросить</div>
+        </div>
+        
+        <div class="status-panel" id="main-action-area">
+            <div id="status-msg" style="color: #888; margin-bottom: 5px;">Выберите 4 фонарика</div>
+            <div class="btn-grid" id="score-buttons"></div>
+        </div>
+
+        <div class="row" id="active-row" style="justify-content: center; background: rgba(255,255,255,0.03); border: 1px dashed #444; margin-bottom: 10px;">
+            <div class="slots" id="active-slots">
+                <div class="slot" onclick="removeColor(0)"></div>
+                <div class="slot" onclick="removeColor(1)"></div>
+                <div class="slot" onclick="removeColor(2)"></div>
+                <div class="slot" onclick="removeColor(3)"></div>
+            </div>
+        </div>
+
+        <div class="picker" id="palette">
+            <div class="lantern color-0" onclick="addColor(0)"></div>
+            <div class="lantern color-1" onclick="addColor(1)"></div>
+            <div class="lantern color-2" onclick="addColor(2)"></div>
+            <div class="lantern color-3" onclick="addColor(3)"></div>
+            <div class="lantern color-4" onclick="addColor(4)"></div>
+            <div class="lantern color-5" onclick="addColor(5)"></div>
+        </div>
+
+        <div id="hint-section-wrap">
+            <div class="hint-section">
+                <div id="hint-label" style="font-size: 11px; text-align: center; color: #666; margin-bottom: 8px;">СОВЕТЫ (нажми для выбора):</div>
+                <div class="hint-container mode-auto" id="hints-list"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let pool = [];
+    let historyRows = [];
+    let activeColors = [null, null, null, null];
+    let tempGreen = null;
+    let isManualMode = true;
+    let isAutoMode = true;
+
+    function initPool() {
+        pool = [];
+        for (let i = 0; i < 6; i++) {
+            for (let j = 0; j < 6; j++) {
+                if (j === i) continue;
+                for (let k = 0; k < 6; k++) {
+                    if (k === i || k === j) continue;
+                    for (let l = 0; l < 6; l++) {
+                        if (l === i || l === j || l === k) continue;
+                        pool.push([i, j, k, l]);
+                    }
+                }
+            }
+        }
+    }
+
+    function calculate() {
+        initPool();
+        historyRows.forEach(h => {
+            pool = pool.filter(c => {
+                const res = check(h.colors, c);
+                return res.g === h.g && res.y === h.y;
+            });
+        });
+        updateUI();
+    }
+
+    function check(guess, secret) {
+        let g = 0, y = 0;
+        guess.forEach((c, i) => {
+            if (c === secret[i]) g++;
+            else if (secret.includes(c)) y++;
+        });
+        return { g, y };
+    }
+
+    function addColor(c) {
+        // Если результат найден (в пуле 1 вариант) или цвет уже выбран — выходим
+        if (pool.length <= 1 || activeColors.includes(c)) return;
+        
+        let idx = activeColors.indexOf(null);
+        if (idx !== -1) {
+            activeColors[idx] = c;
+            renderActive();
+        }
+    }
+    function removeColor(idx) {
+        if (pool.length <= 1) return;
+        activeColors[idx] = null;
+        tempGreen = null;
+        renderActive();
+    }
+
+    function useHint(combo) {
+        if (pool.length <= 1) return;
+        activeColors = [...combo];
+        renderActive();
+    }
+
+    function toggleManual() {
+        isManualMode = !isManualMode;
+        
+        const palette = document.getElementById('palette');
+        const manualTab = document.getElementById('manual-tab');
+        
+        if (isManualMode) {
+            palette.classList.add('show');
+            manualTab.classList.add('active');
+        } else {
+            palette.classList.remove('show');
+            manualTab.classList.remove('active');
+        }
+        
+        // Перерисовываем советы с анимацией исчезновения/появления
+        const hintList = document.getElementById('hints-list');
+        hintList.style.opacity = '0';
+        setTimeout(() => {
+            updateUI();
+            hintList.style.opacity = '1';
+        }, 200);
+    }
+
+    function toggleAuto() {
+        isAutoMode = !isAutoMode;
+        
+        const autoTab = document.getElementById('auto-tab');
+        const hintWrap = document.getElementById('hint-section-wrap');
+        
+        autoTab.classList.toggle('active', isAutoMode);
+
+        // Вместо display: none используем анимацию высоты и прозрачности
+        if (isAutoMode) {
+            hintWrap.style.maxHeight = '0px';
+            hintWrap.style.opacity = '0';
+            hintWrap.style.marginTop = '0px';
+            
+            // Если включили Авто и строка пустая - заполнярываем
+            if (activeColors.includes(null) && pool.length > 0) {
+                useHint(pool[0]);
+            }
+        } else {
+            hintWrap.style.maxHeight = '500px';
+            hintWrap.style.opacity = '1';
+            hintWrap.style.marginTop = '5px';
+        }
+    }
+    function renderActive() {
+        const slots = document.getElementById('active-slots').children;
+        activeColors.forEach((c, i) => {
+            slots[i].innerHTML = c !== null ? `<div class="lantern color-${c}"></div>` : '';
+        });
+
+        const pLants = document.getElementById('palette').children;
+
+       for(let i=0; i<6; i++) {
+    // Добавляем класс 'used', если цвет выбран ИЛИ если результат уже найден
+    const isUsed = activeColors.includes(i) || pool.length <= 1;
+    pLants[i].className = `lantern color-${i} ${isUsed ? 'used' : ''}`;
+}
+
+        updateActionArea();
+    }
+
+    function updateActionArea() {
+        const status = document.getElementById('status-msg');
+        const btns = document.getElementById('score-buttons');
+        btns.innerHTML = '';
+
+        if (pool.length === 0) {
+            status.innerText = "ОШИБКА: Противоречивые данные!";
+            status.style.color = "var(--error)";
+            return;
+        }
+
+        if (pool.length === 1) {
+            status.innerHTML = "<span class='win-text'>РЕЗУЛЬТАТ НАЙДЕН!</span>";
+            activeColors = [...pool[0]];
+            const slots = document.getElementById('active-slots').children;
+            activeColors.forEach((c, i) => slots[i].innerHTML = `<div class="lantern color-${c}"></div>`);
+            return;
+        }
+
+        if (activeColors.includes(null)) {
+            status.innerText = "Соберите ряд из 4-х фонариков";
+            status.style.color = "#888";
+        } else if (tempGreen === null) {
+            status.innerText = "Сколько ЗЕЛЁНЫХ?";
+            status.style.color = "var(--accent)";
+            // Для зеленых показываем от 0 до 4 жестко
+            for(let i=0; i<=4; i++) {
+                btns.innerHTML += `<button class="btn-score btn-g" style="grid-column: ${i+1}" onclick="setG(${i})">${i}</button>`;
+            }
+        } else {
+            status.innerText = "Сколько ЖЁЛТЫХ?";
+            status.style.color = "var(--yellow)";
+            // Желтые в зависимости от зеленого
+            for(let i=0; i<=(4-tempGreen); i++) {
+                btns.innerHTML += `<button class="btn-score btn-y" style="grid-column: ${i+1}" onclick="submit(${i})">${i}</button>`;
+            }
+        }
+    }
+
+    function setG(n) { 
+        tempGreen = n; 
+        // Автоматический пропуск желтых, если их может быть только 0 (при 3 или 4 зеленых)
+        if (tempGreen === 3 || tempGreen === 4) {
+            submit(0);
+        } else {
+            updateActionArea(); 
+        }
+    }
+
+    function submit(y) {
+        historyRows.push({ colors: [...activeColors], g: tempGreen, y: y });
+        activeColors = [null, null, null, null];
+        tempGreen = null;
+        calculate();
+
+        // Логика режима Авто: если пул больше 1, сразу ставим следующий вариант
+        if (isAutoMode && pool.length > 1) {
+            activeColors = [...pool[0]];
+            renderActive();
+        }
+    }
+
+    function deleteRow(idx) {
+        historyRows.splice(idx, 1);
+        calculate();
+        
+        if (isAutoMode && pool.length > 1 && activeColors.includes(null)) {
+            activeColors = [...pool[0]];
+            renderActive();
+        }
+    }
+
+    function fullReset() {
+        historyRows = [];
+        activeColors = [null, null, null, null];
+        tempGreen = null;
+        calculate();
+        
+        if (isAutoMode && pool.length > 1) {
+            activeColors = [...pool[0]];
+            renderActive();
+        }
+    }
+
+    function updateUI() {
+        document.getElementById('pool-info').innerHTML = `Осталось: <b>${pool.length}</b>`;
+        
+        const histCont = document.getElementById('history-container');
+        histCont.innerHTML = historyRows.map((h, i) => `
+            <div class="row">
+                <div class="slots">${h.colors.map(c => `<div class="slot"><div class="lantern color-${c}"></div></div>`).join('')}</div>
+                <div class="score-badge">
+                    <span style="color:var(--accent)">⬤ ${h.g}</span>
+                    <span style="color:var(--yellow)">⬤ ${h.y}</span>
+                </div>
+                <div onclick="deleteRow(${i})" style="cursor:pointer; opacity:0.3; margin-left:auto; padding: 0 5px; font-size: 18px;">×</div>
+            </div>
+        `).join('');
+        histCont.scrollTop = histCont.scrollHeight;
+
+        const hintList = document.getElementById('hints-list');
+        const hintLabel = document.getElementById('hint-label');
+        
+        hintList.className = isManualMode ? 'hint-container mode-manual' : 'hint-container mode-auto';
+        
+        if (pool.length <= 1) {
+            hintList.innerHTML = '';
+            hintLabel.innerText = pool.length === 1 ? "ЭТО ПРАВИЛЬНЫЙ ОТВЕТ" : "НЕКОРРЕКТНЫЙ ВВОД";
+        } else {
+            hintLabel.innerText = "СОВЕТЫ (нажми для выбора):";
+            const hintsLimit = isManualMode ? 3 : 4; 
+            const topHints = pool.slice(0, hintsLimit);
+            
+            hintList.innerHTML = topHints.map(combo => `
+                <div class="hint-item" onclick='useHint(${JSON.stringify(combo)})'>
+                    ${combo.map(c => `<div class="mini-l color-${c}"></div>`).join('')}
+                </div>
+            `).join('');
+        }
+
+        renderActive();
+    }
+
+    calculate();
+
+    if (isManualMode) {
+        document.getElementById('palette').classList.add('show');
+        document.getElementById('manual-tab').classList.add('active');
+    }
+    if (isAutoMode) {
+        document.getElementById('auto-tab').classList.add('active');
+        const hintWrap = document.getElementById('hint-section-wrap');
+        hintWrap.style.maxHeight = '0px';
+        hintWrap.style.opacity = '0';
+        
+        // Автоматически подставляем первый вариант из пула
+        if (pool.length > 0) {
+            activeColors = [...pool[0]];
+            renderActive();
+        }
+    }
+</script>
+</body>
+</html>
